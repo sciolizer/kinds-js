@@ -1,0 +1,26 @@
+{
+  "name": "kinds",
+  "version": "0.0.1",
+  "description": "Type system for javascript checked at runtime, supporting parametric polymorphism and kinds (types of types)",
+  "main": "index.js",
+  "scripts": {
+    "test": "mocha"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/sciolizer/kinds-js.git"
+  },
+  "keywords": [
+    "type",
+    "system",
+    "parametric",
+    "polymorphism",
+    "kinds"
+  ],
+  "author": "JoshBBall@gmail.com",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/sciolizer/kinds-js/issues"
+  },
+  "homepage": "https://github.com/sciolizer/kinds-js"
+}

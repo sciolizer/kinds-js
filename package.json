@@ -22,5 +22,8 @@
   "bugs": {
     "url": "https://github.com/sciolizer/kinds-js/issues"
   },
-  "homepage": "https://github.com/sciolizer/kinds-js"
+  "homepage": "https://github.com/sciolizer/kinds-js",
+  "devDependencies": {
+    "mocha": "^2.2.4"
+  }
 }

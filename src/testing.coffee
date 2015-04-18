@@ -152,6 +152,22 @@ singletonSubst = (variable, type) ->
   checkReturn isSubst, ->
     [{Binding:{variable:variable,type:type}}]
 
+typeVariables = (type) ->
+  check isType, type
+  checkReturn(isArray(isVariable), ->
+    if type.Variable
+      [type.Variable.variable]
+    else if type.Apply
+      variables = {}
+      for v in typeVariables(type.Apply.left)
+        variables[v.name] = v
+      for v in typeVariables(type.Apply.right)
+        variables[v.name] = v
+      (v for own _, v of variables)
+    else
+      []
+  )
+
 bindVariable = (variable, t) ->
   check isVariable, variable
   check isType, t
@@ -235,6 +251,7 @@ bindVariable = (variable, t) ->
 #
 module.exports = {
   adt
+  bindVariable
   checkReturn
   eqKind
   isBinding
@@ -253,4 +270,5 @@ module.exports = {
   nullSubst
   singletonSubst
   typeKind
+  typeVariables
 }

@@ -2,6 +2,14 @@ assert = require 'assert'
 
 src = require '../src/testing.coffee'
 
+star = {Star:{}}
+func = (left, right) -> {Function:{left,right}}
+starToStar = func(star,star)
+maybeType = {Constructor:{constructor:{Constructor:{name:"Maybe",kind:func(star,star)}}}}
+integerType = {Constructor:{constructor:{Constructor:{name:"Integer",kind:star}}}}
+xVariable = {Variable:{name:"x",kind:star}}
+xVariableType = {Variable:{variable:xVariable}}
+
 expectError = (err, f) ->
   errCaught = false
   try
@@ -69,23 +77,22 @@ describe 'adt schema', ->
     expectCheckIsException -> src.adt('myType', undefined)
 
 describe 'isKind', ->
-  it 'should accept *', -> src.isKind {Star: {}}
-  it 'should accept * -> *', -> src.isKind {Function: {left: {Star: {}}, right: {Star: {}}}}
+  it 'should accept *', -> src.isKind star
+  it 'should accept * -> *', -> src.isKind starToStar
   it 'should reject * -> obj', ->
     expectCheckIsException -> src.isKind {Function: {left: {Star: {}}, right: {}}}
 
 describe 'isVariable', ->
-  it 'should accept x', -> src.isVariable {Variable: {name: "x", kind: {Star: {}}}}
+  it 'should accept x', -> src.isVariable xVariable
 
 describe 'isConstructor', ->
-  it 'should accept Just', -> src.isConstructor {Constructor: {name: "Just", kind: {Function: {left: {Star: {}}, right: {Star: {}}}}}}
+  it 'should accept Just', -> src.isConstructor {Constructor: {name: "Just", kind: starToStar}}
 
 describe 'isType', ->
-  integerType = {Constructor: {constructor: {Constructor: {name: "Integer", kind: {Star: {}}}}}}
-  it 'should accept x', -> src.isType {Variable: {variable: {Variable: {name: "x", kind: {Star: {}}}}}}
+  it 'should accept x', -> src.isType xVariableType
   it 'should accept Integer', -> src.isType integerType
   it 'should accept Maybe(Integer)', ->
-    maybeType = {Constructor: {constructor: {Constructor: {name: "Maybe", kind: {Function: {left: {Star: {}}, right: {Star: {}}}}}}}}
+    maybeType = {Constructor: {constructor: {Constructor: {name: "Maybe", kind: starToStar}}}}
     src.isType {Apply: {left: maybeType, right: integerType}}
 
 describe 'listFunctions', ->
@@ -120,11 +127,6 @@ describe 'nullSubst', ->
   it 'should be an array', ->
     src.check(src.isArray(src.any), src.nullSubst())
 
-star = {Star:{}}
-func = (left, right) -> {Function:{left,right}}
-maybeType = {Constructor:{constructor:{Constructor:{name:"Maybe",kind:func(star,star)}}}}
-integerType = {Constructor:{constructor:{Constructor:{name:"Integer",kind:star}}}}
-
 describe 'eqKind', ->
   expectEqual = (left, right) ->
     assert(src.eqKind(left, right))
@@ -133,34 +135,50 @@ describe 'eqKind', ->
   it 'should say * == *', ->
     expectEqual star, star
   it 'should say (* -> *) == (* -> *)', ->
-    expectEqual(func(star,star),func(star,star))
+    expectEqual(starToStar,starToStar)
   it 'should say ((* -> *) -> *) == ((* -> *) -> *)', ->
-    expectEqual(func(func(star,star),star),func(func(star,star),star))
+    expectEqual(func(starToStar,star),func(starToStar,star))
   it 'should say * != * -> *', ->
-    expectUnequal(star, func(star, star))
+    expectUnequal(star, starToStar)
   it 'should say * -> * != *', ->
-    expectUnequal(func(star,star), star)
+    expectUnequal(starToStar, star)
   it 'should say * -> * != * -> * -> *', ->
-    expectUnequal(func(star,star), func(star,func(star,star)))
+    expectUnequal(starToStar, func(star,starToStar))
 
 describe 'typeKind', ->
   assertEqualKinds = (left, right) ->
     assert(src.eqKind(left,right))
   it 'should say the kind of x is a star', ->
-    assertEqualKinds(src.typeKind({Variable:{variable:{Variable:{name:"x",kind:star}}}}),star)
+    assertEqualKinds(src.typeKind(xVariableType),star)
   it 'should say the kind of maybe is * -> *', ->
-    assertEqualKinds(src.typeKind(maybeType), func(star,star))
+    assertEqualKinds(src.typeKind(maybeType), starToStar)
   it 'should say the kind of maybe int is *', ->
-    assertEqualKinds(src.typeKind({Apply:{left:maybeType,right:{Constructor:{constructor:{Constructor:{name:"Integer",kind:star}}}}}}), star)
+    assertEqualKinds(src.typeKind({Apply:{left:maybeType,right:integerType}}), star)
 
 describe 'isBinding', ->
   it 'should accept x as an int', ->
-    src.check src.isBinding, {Binding:{variable:{Variable:{name:"x",kind:star}},type:integerType}}
+    src.check src.isBinding, {Binding:{variable:xVariable,type:integerType}}
 
 describe 'isSubst', ->
   it 'should accept my bindings', ->
-    src.check src.isSubst, [{Binding:{variable:{Variable:{name:"x",kind:star}},type:integerType}}]
+    src.check src.isSubst, [{Binding:{variable:xVariable,type:integerType}}]
 
 describe 'singletonSubst', ->
   it 'should accept x as an integer', ->
-    src.singletonSubst {Variable:{name:"x",kind:star}}, integerType
+    src.singletonSubst xVariable, integerType
+
+describe 'typeVariables', ->
+  it 'should return a singleton for a variable', ->
+    assert.deepEqual(src.typeVariables(xVariableType), [xVariable])
+  it 'should return any variables it encounters', ->
+    assert.deepEqual(src.typeVariables({Apply:{left:maybeType,right:xVariableType}}, [xVariable]), [xVariable])
+  it 'should return the union of variables in an applied type', ->
+    tvs = src.typeVariables({Apply:{left:{Apply:{left:{Constructor:{constructor:{Constructor:{name:"Map",kind:func(star,starToStar)}}}},right:xVariableType}},right:xVariableType}})
+    assert.deepEqual tvs, [xVariable]
+  it 'should find not variables in a constructor type', ->
+    assert.deepEqual(src.typeVariables(integerType), [])
+
+#describe 'bindVariable', ->
+#  it 'should return the empty substitution for binding a variable to itself', ->
+#    subst = src.bindVariable {Variable:{name:"x",kind:star}}, {Variable:{variable:{Variable:{name:"x",kind:star}}}}
+#    assert.deepEqual subst, []

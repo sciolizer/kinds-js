@@ -1,6 +1,6 @@
 assert = require 'assert'
 
-src = require '../src/testing.coffee'
+src = require '../src/testing'
 
 star = {Star:{}}
 func = (left, right) -> {Function:{left,right}}
